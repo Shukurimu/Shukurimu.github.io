@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>RandomChars</title>
+<meta charset="utf-8">
+<style>
+body, input {
+    font-size: 20px;
+}
+textarea {
+    font-size: 24px;
+    font-family: Consolas;
+    width: 90%;
+}
+span {
+    color: Red;
+}
+</style>
+</head>
+<body>
+
+<p>Total Length
+    <input type='text' id='input_length' value='16' />
+    <span id='msg_length'></span>
+</p>
+
+<p>Limit of consecutive Ks
+    <input type='text' id='input_limitK' value='2' />
+    <span id='msg_inputK'></span>
+</p>
+
+<input id='input_go' type='button' value='Generate' /><br />
+<textarea id='output' spellcheck='false'></textarea>
+
+<script>
+"use strict";
+
+const checkInt = function(content) {
+    return content.match(/^\d+$/);
+};
+
+let rules = [true, true];
+
+const msg_length = document.querySelector('#msg_length');
+document.querySelector('#input_length').onblur = function() {
+    if (checkInt(this.value)) {
+        msg_length.innerHTML = '';
+        rules[0] = true;
+    } else {
+        msg_length.innerHTML = 'wrong format';
+        rules[0] = false;
+    }
+};
+
+const msg_inputK = document.querySelector('#msg_inputK');
+document.querySelector('#input_limitK').onblur = function() {
+    if (checkInt(this.value)) {
+        msg_inputK.innerHTML = '';
+        rules[1] = true;
+    } else {
+        msg_inputK.innerHTML = 'wrong format';
+        rules[1] = false;
+    }
+};
+
+const output = document.querySelector('#output');
+document.querySelector('#input_go').onclick = function() {
+    if (rules.indexOf(false) >= 0) {
+        output.innerHTML = '(wrong input)';
+        return;
+    }
+    const limitK = parseInt(input_limitK.value);
+    const candidates = ['L', 'R', 'K'];
+    const totalLength = parseInt(input_length.value);
+    let currLength = 0;
+    let result = [''];
+    let remain = limitK;
+    while (currLength < totalLength) {
+        let c = candidates[Math.floor(Math.random() * 3)];
+        if (c == 'K') {
+            if (remain == 0)
+                continue;
+            --remain;
+        } else {
+            remain = limitK;
+        }
+        result.push(c);
+        ++currLength;
+        if (currLength % 4 == 0)
+            result.push(' ');
+    }
+    output.innerHTML = result.join('');
+};
+
+</script>
+</body>
+</html>
