@@ -1,95 +1,135 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>RandomChars</title>
-<meta charset="utf-8">
+<title>RandomStringGenerator</title>
+<meta charset="utf8" />
 <style>
 body, input {
     font-size: 20px;
+}
+.symbol, .limit {
+    width: 40px;
 }
 textarea {
     font-size: 24px;
     font-family: Consolas;
     width: 90%;
 }
-span {
-    color: Red;
-}
 </style>
 </head>
 <body>
 
-<p>Total Length
-    <input type='text' id='input_length' value='16' />
-    <span id='msg_length'></span>
-</p>
-
-<p>Limit of consecutive Ks
-    <input type='text' id='input_limitK' value='2' />
-    <span id='msg_inputK'></span>
-</p>
-
-<input id='input_go' type='button' value='Generate' /><br />
-<textarea id='output' spellcheck='false'></textarea>
+<p>Total Length <input type='text' id='inputLength' value='16' maxlength=4 /></p>
+<input id='inputAdd' type='button' value='+' />
+<input id='inputGo' type='button' value='Generate' /><br />
+<textarea id='output' spellcheck='false' readonly=></textarea>
 
 <script>
 "use strict";
 
-const checkInt = function(content) {
-    return content.match(/^\d+$/);
+const ERROR_BG = 'pink';
+document.querySelector('#inputLength').onblur = function() {
+    this.style.backgroundColor = this.value.match(/^\d+$/) ? 'initial' : ERROR_BG;
 };
 
-let rules = [true, true];
-
-const msg_length = document.querySelector('#msg_length');
-document.querySelector('#input_length').onblur = function() {
-    if (checkInt(this.value)) {
-        msg_length.innerHTML = '';
-        rules[0] = true;
-    } else {
-        msg_length.innerHTML = 'wrong format';
-        rules[0] = false;
-    }
+const inputAdd = document.querySelector('#inputAdd');
+inputAdd.onclick = function() {
+    newConstraint('_', 100, false);
 };
 
-const msg_inputK = document.querySelector('#msg_inputK');
-document.querySelector('#input_limitK').onblur = function() {
-    if (checkInt(this.value)) {
-        msg_inputK.innerHTML = '';
-        rules[1] = true;
-    } else {
-        msg_inputK.innerHTML = 'wrong format';
-        rules[1] = false;
+const deepRemove = function(obj) {
+    while (obj.lastChild) {
+        deepRemove(obj.lastChild);
     }
+    obj.parentNode.remove(obj);
+};
+
+const newConstraint = function(symbol, defaultLimit, disabled) {
+    const component = document.createElement('p');
+
+    let inputRemove = document.createElement('input');
+    inputRemove.type = 'button';
+    inputRemove.value = '-';
+    inputRemove.disabled = disabled;
+    inputRemove.onclick = function() {
+        deepRemove(this);
+    };
+    component.appendChild(inputRemove);
+
+    component.appendChild(document.createTextNode(' Symbol '));
+    let inputSymbol = document.createElement('input');
+    inputSymbol.type = 'text';
+    inputSymbol.value = symbol;
+    inputSymbol.className = 'symbol';
+    inputSymbol.setAttribute('maxlength', 1);
+    inputSymbol.onblur = function() {
+        this.style.backgroundColor = this.value.match(/^\w$/) ? 'initial' : ERROR_BG;
+    };
+    component.appendChild(inputSymbol);
+
+    component.appendChild(document.createTextNode(' - Consecutive Limit '));
+    let inputLimit = document.createElement('input');
+    inputLimit.type = 'text';
+    inputLimit.value = defaultLimit;
+    inputLimit.className = 'limit';
+    inputLimit.setAttribute('maxlength', 3);
+    inputLimit.onblur = function() {
+        this.style.backgroundColor = this.value.match(/^\d+$/) ? 'initial' : ERROR_BG;
+    };
+    component.appendChild(inputLimit);
+
+    document.body.insertBefore(component, inputAdd);
 };
 
 const output = document.querySelector('#output');
-document.querySelector('#input_go').onclick = function() {
-    if (rules.indexOf(false) >= 0) {
-        output.innerHTML = '(wrong input)';
-        return;
-    }
-    const limitK = parseInt(input_limitK.value);
-    const candidates = ['L', 'R', 'K'];
-    const totalLength = parseInt(input_length.value);
-    let currLength = 0;
-    let result = [''];
-    let remain = limitK;
-    while (currLength < totalLength) {
-        let c = candidates[Math.floor(Math.random() * 3)];
-        if (c == 'K') {
-            if (remain == 0)
-                continue;
-            --remain;
-        } else {
-            remain = limitK;
+document.querySelector('#inputGo').onclick = function() {
+    for (let obj of document.querySelectorAll('input[type="text"]')) {
+        if (obj.style.backgroundColor == ERROR_BG) {
+            output.innerHTML = '(wrong inputs)';
+            return;
         }
-        result.push(c);
-        ++currLength;
-        if (currLength % 4 == 0)
-            result.push(' ');
     }
-    output.innerHTML = result.join('');
+    const components = [];
+    document.querySelectorAll('.symbol').forEach(function(obj) {
+        components.push({'symbol': obj.value});
+    });
+    document.querySelectorAll('.limit').forEach(function(obj, index) {
+        components[index]['limit'] = parseInt(obj.value);
+        components[index]['status'] = 0;
+    });
+    const totalSymbol = components.length;
+    const totalLength = parseInt(inputLength.value);
+    let resultSymbols = [];
+    let resultLength = 0;
+    let retriedTimes = 0;
+    while (resultLength < totalLength) {
+        let index = Math.floor(Math.random() * totalSymbol);
+        let entry = components[index];
+        if (entry['status'] >= entry['limit']) {
+            if (++retriedTimes > 50) {
+                output.innerHTML = '(no solution or try again)';
+                return;
+            }
+            continue;
+        }
+        for (let i = 0; i < totalSymbol; ++i) {
+            if (i == index)
+                ++entry['status'];
+            else
+                components[i]['status'] = 0;
+        }
+        retriedTimes = 0;
+        resultSymbols.push(entry['symbol']);
+        if (++resultLength % 4 == 0)
+            resultSymbols.push(' ');
+    }
+    output.innerHTML = resultSymbols.join('');
+};
+
+window.onload = function() {
+    newConstraint('K', 2, true);
+    newConstraint('R', 100, false);
+    newConstraint('L', 100, false);
 };
 
 </script>
