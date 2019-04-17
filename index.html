@@ -7,13 +7,15 @@
 body, input {
     font-size: 20px;
 }
-.symbol, .limit {
+.symbol {
     width: 40px;
 }
+.limit {
+    width: 60px;
+}
 textarea {
-    font-size: 24px;
-    font-family: Consolas;
-    width: 90%;
+    font-size: 28px;
+    width: 70%;
 }
 </style>
 </head>
@@ -21,15 +23,20 @@ textarea {
 
 <p>Total Length <input type='text' id='inputLength' value='16' maxlength=4 /></p>
 <input id='inputAdd' type='button' value='+' />
-<input id='inputGo' type='button' value='Generate' /><br />
-<textarea id='output' spellcheck='false' readonly=></textarea>
+<input id='inputGen' type='button' value='Generate' /><br />
+<textarea id='output' spellcheck='false' readonly></textarea>
 
 <script>
 "use strict";
 
-const ERROR_BG = 'pink';
-document.querySelector('#inputLength').onblur = function() {
-    this.style.backgroundColor = this.value.match(/^\d+$/) ? 'initial' : ERROR_BG;
+const ERROR = 'pink';
+const validate = function(obj, regex) {
+    obj.style.backgroundColor = obj.value.match(regex) ? '' : ERROR;
+};
+
+const inputLength = document.querySelector('#inputLength');
+inputLength.oninput = function() {
+    validate(this, /^\d+$/g);
 };
 
 const inputAdd = document.querySelector('#inputAdd');
@@ -37,14 +44,7 @@ inputAdd.onclick = function() {
     newConstraint('_', 100, false);
 };
 
-const deepRemove = function(obj) {
-    while (obj.lastChild) {
-        deepRemove(obj.lastChild);
-    }
-    obj.parentNode.remove(obj);
-};
-
-const newConstraint = function(symbol, defaultLimit, disabled) {
+const newConstraint = function(symbol, limit, disabled) {
     const component = document.createElement('p');
 
     let inputRemove = document.createElement('input');
@@ -52,7 +52,7 @@ const newConstraint = function(symbol, defaultLimit, disabled) {
     inputRemove.value = '-';
     inputRemove.disabled = disabled;
     inputRemove.onclick = function() {
-        deepRemove(this);
+        component.remove();
     };
     component.appendChild(inputRemove);
 
@@ -62,19 +62,19 @@ const newConstraint = function(symbol, defaultLimit, disabled) {
     inputSymbol.value = symbol;
     inputSymbol.className = 'symbol';
     inputSymbol.setAttribute('maxlength', 1);
-    inputSymbol.onblur = function() {
-        this.style.backgroundColor = this.value.match(/^\w$/) ? 'initial' : ERROR_BG;
+    inputSymbol.oninput = function() {
+        validate(this, /^\w+$/g);
     };
     component.appendChild(inputSymbol);
 
-    component.appendChild(document.createTextNode(' - Consecutive Limit '));
+    component.appendChild(document.createTextNode(' Limit '));
     let inputLimit = document.createElement('input');
     inputLimit.type = 'text';
-    inputLimit.value = defaultLimit;
+    inputLimit.value = limit;
     inputLimit.className = 'limit';
     inputLimit.setAttribute('maxlength', 3);
-    inputLimit.onblur = function() {
-        this.style.backgroundColor = this.value.match(/^\d+$/) ? 'initial' : ERROR_BG;
+    inputLimit.oninput = function() {
+        validate(this, /^\d+$/g);
     };
     component.appendChild(inputLimit);
 
@@ -82,48 +82,50 @@ const newConstraint = function(symbol, defaultLimit, disabled) {
 };
 
 const output = document.querySelector('#output');
-document.querySelector('#inputGo').onclick = function() {
-    for (let obj of document.querySelectorAll('input[type="text"]')) {
-        if (obj.style.backgroundColor == ERROR_BG) {
-            output.innerHTML = '(wrong inputs)';
+document.querySelector('#inputGen').onclick = function() {
+    for (let obj of document.querySelectorAll('input[maxlength]')) {
+        if (obj.style.backgroundColor == ERROR) {
+            output.innerHTML = '(invalid inputs)';
             return;
         }
     }
     const components = [];
     document.querySelectorAll('.symbol').forEach(function(obj) {
-        components.push({'symbol': obj.value});
-    });
-    document.querySelectorAll('.limit').forEach(function(obj, index) {
-        components[index]['limit'] = parseInt(obj.value);
-        components[index]['status'] = 0;
+        components.push({
+            'symbol': obj.value,
+            'limit': parseInt(obj.nextElementSibling.value)
+        });
     });
     const totalSymbol = components.length;
     const totalLength = parseInt(inputLength.value);
-    let resultSymbols = [];
+    let resultString = [];
     let resultLength = 0;
     let retriedTimes = 0;
-    while (resultLength < totalLength) {
-        let index = Math.floor(Math.random() * totalSymbol);
-        let entry = components[index];
-        if (entry['status'] >= entry['limit']) {
-            if (++retriedTimes > 50) {
-                output.innerHTML = '(no solution or try again)';
-                return;
+    let currSymbol = 0;
+    let currRepeat = 0;
+    while (resultLength < totalLength && retriedTimes < 50) {
+        let entry = components[Math.floor(Math.random() * totalSymbol)];
+        if (currSymbol == entry['symbol']) {
+            if (currRepeat >= entry['limit']) {
+                ++retriedTimes;
+                continue;
+            } else {
+                ++currRepeat;
             }
+        } else if (entry['limit'] > 0) {
+            currSymbol = entry['symbol'];
+            currRepeat = 1;
+        } else {
+            ++retriedTimes;
             continue;
         }
-        for (let i = 0; i < totalSymbol; ++i) {
-            if (i == index)
-                ++entry['status'];
-            else
-                components[i]['status'] = 0;
-        }
         retriedTimes = 0;
-        resultSymbols.push(entry['symbol']);
+        resultString.push(currSymbol);
         if (++resultLength % 4 == 0)
-            resultSymbols.push(' ');
+            resultString.push(' ');
     }
-    output.innerHTML = resultSymbols.join('');
+    output.innerHTML = retriedTimes == 0 ?
+        resultString.join('') : '(no solution or try again)';
 };
 
 window.onload = function() {
