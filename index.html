@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- https://programs.aeondrums.com/lgff-sample -->
 <html>
 <head>
 <title>RandomStringGenerator</title>
@@ -7,113 +8,85 @@
 body, input {
     font-size: 20px;
 }
-.symbol {
-    width: 40px;
-}
-.limit {
-    width: 60px;
-}
 textarea {
     font-size: 28px;
     width: 70%;
+}
+div > p {
+    line-height: 10%;
 }
 </style>
 </head>
 <body>
 
-<p>Total Length <input type='text' id='inputLength' value='16' maxlength=4 /></p>
-<input id='inputAdd' type='button' value='+' />
-<input id='inputGen' type='button' value='Generate' /><br />
-<textarea id='output' spellcheck='false' readonly></textarea>
+<p>Length <input type='number' id='inputLength' value='16' min='1' /></p>
+<p>Group <input type='number' id='inputGroup' value='4' min='0' /></p>
+<p>Timer <input type='number' id='inputTimer' value='30' min='1' /></p>
+<p>R <input type='number' id='inputR' value='4' min='0' /></p>
+<p>L <input type='number' id='inputL' value='4' min='0' /></p>
+<p>K <input type='number' id='inputK' value='2' min='0' /></p>
+<p>F <input type='number' id='inputF' value='1' min='0' /></p>
+<input type='button' id='inputGen' value='Generate' /><br />
+<textarea spellcheck='false' readonly></textarea>
+<div></div>
 
 <script>
 "use strict";
 
-const ERROR = 'pink';
-const validate = function(obj, regex) {
-    obj.style.backgroundColor = obj.value.match(regex) ? '' : ERROR;
-};
-
+const ERROR_BG = 'pink';
 const inputLength = document.querySelector('#inputLength');
-inputLength.oninput = function() {
-    validate(this, /^\d+$/g);
+const inputGroup = document.querySelector('#inputGroup');
+const inputTimer = document.querySelector('#inputTimer');
+const inputR = document.querySelector('#inputR');
+const inputL = document.querySelector('#inputL');
+const inputK = document.querySelector('#inputK');
+const inputF = document.querySelector('#inputF');
+const inputGen = document.querySelector('#inputGen');
+const textarea = document.querySelector('textarea');
+const div = document.querySelector('div');
+const constraints = [inputLength, inputGroup, inputTimer,
+                     inputR, inputL, inputK, inputF];
+const timerInfo = {'value': 30 * 1000, 'start': new Date().getTime()};
+
+const updateTimerInfo = function() {
 };
 
-const inputAdd = document.querySelector('#inputAdd');
-inputAdd.onclick = function() {
-    newConstraint('_', 100, false);
-};
-
-const newConstraint = function(symbol, limit, disabled) {
-    const component = document.createElement('p');
-
-    let inputRemove = document.createElement('input');
-    inputRemove.type = 'button';
-    inputRemove.value = '-';
-    inputRemove.disabled = disabled;
-    inputRemove.onclick = function() {
-        component.remove();
-    };
-    component.appendChild(inputRemove);
-
-    component.appendChild(document.createTextNode(' Symbol '));
-    let inputSymbol = document.createElement('input');
-    inputSymbol.type = 'text';
-    inputSymbol.value = symbol;
-    inputSymbol.className = 'symbol';
-    inputSymbol.setAttribute('maxlength', 1);
-    inputSymbol.oninput = function() {
-        validate(this, /^\w+$/g);
-    };
-    component.appendChild(inputSymbol);
-
-    component.appendChild(document.createTextNode(' Limit '));
-    let inputLimit = document.createElement('input');
-    inputLimit.type = 'text';
-    inputLimit.value = limit;
-    inputLimit.className = 'limit';
-    inputLimit.setAttribute('maxlength', 3);
-    inputLimit.oninput = function() {
-        validate(this, /^\d+$/g);
-    };
-    component.appendChild(inputLimit);
-
-    document.body.insertBefore(component, inputAdd);
-};
-
-const output = document.querySelector('#output');
-document.querySelector('#inputGen').onclick = function() {
-    for (let obj of document.querySelectorAll('input[maxlength]')) {
-        if (obj.style.backgroundColor == ERROR) {
-            output.innerHTML = '(invalid inputs)';
+inputGen.onclick = function() {
+    for (let obj of constraints) {
+        if (obj.value.match(/^\d+$/)) {
+            obj.style.backgroundColor = '';
+        } else {
+            obj.style.backgroundColor = ERROR_BG;
+            textarea.innerHTML = '(invalid inputs)';
             return;
         }
     }
-    const components = [];
-    document.querySelectorAll('.symbol').forEach(function(obj) {
-        components.push({
-            'symbol': obj.value,
-            'limit': parseInt(obj.nextElementSibling.value)
-        });
-    });
-    const totalSymbol = components.length;
     const totalLength = parseInt(inputLength.value);
+    const groupCount = parseInt(inputGroup.value);
+    const components = [
+        ['R', parseInt(inputR.value)],
+        ['L', parseInt(inputL.value)],
+        ['K', parseInt(inputK.value)],
+        ['F', parseInt(inputF.value)],
+    ];
     let resultString = [];
     let resultLength = 0;
     let retriedTimes = 0;
     let currSymbol = 0;
     let currRepeat = 0;
     while (resultLength < totalLength && retriedTimes < 50) {
-        let entry = components[Math.floor(Math.random() * totalSymbol)];
-        if (currSymbol == entry['symbol']) {
-            if (currRepeat >= entry['limit']) {
+        let entry = components[Math.floor(Math.random() * 4)];
+        let symbol = entry[0];
+        let limit = entry[1];
+        if (currSymbol == symbol) {
+            if (currRepeat >= limit) {
                 ++retriedTimes;
                 continue;
             } else {
                 ++currRepeat;
             }
-        } else if (entry['limit'] > 0) {
-            currSymbol = entry['symbol'];
+        } else if (limit > 0) {
+            currSymbol = symbol;
             currRepeat = 1;
         } else {
             ++retriedTimes;
@@ -121,17 +94,36 @@ document.querySelector('#inputGen').onclick = function() {
         }
         retriedTimes = 0;
         resultString.push(currSymbol);
-        if (++resultLength % 4 == 0)
+        if (++resultLength % groupCount == 0)
             resultString.push(' ');
     }
-    output.innerHTML = retriedTimes == 0 ?
-        resultString.join('') : '(no solution or try again)';
+
+    if (retriedTimes == 0) {
+        textarea.innerHTML = resultString.join('');
+        let element = document.createElement('p');
+        element.innerHTML = textarea.innerHTML;
+        div.insertBefore(element, div.firstChild);
+        // update
+        timerInfo['value'] = parseInt(inputTimer.value) * 1000;
+        timerInfo['start'] = new Date().getTime();
+    } else {
+        textarea.innerHTML = '(no solution or try again)';
+    }
+};
+
+const render = function() {
+    let current = new Date().getTime();
+    let remain = timerInfo['value'] - (current - timerInfo['start']);
+    if (remain > 0) {
+        inputGen.value = 'Generate ' + ~~(remain / 1000);
+    } else {
+        inputGen.onclick();
+    }
+    window.requestAnimationFrame(render);
 };
 
 window.onload = function() {
-    newConstraint('K', 2, true);
-    newConstraint('R', 100, false);
-    newConstraint('L', 100, false);
+    window.requestAnimationFrame(render);
 };
 
 </script>
